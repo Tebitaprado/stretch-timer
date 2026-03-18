@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>StretchFlow — Temporizador</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  /* ─── VARIABLES ─── */
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a22;
+    --border: #232836;
+    --text: #e8ecf4;
+    --muted: #5a6278;
+    --stretch-color: #4fffb0;
+    --stretch-glow: rgba(79,255,176,0.18);
+    --rest-color: #ff8c42;
+    --rest-glow: rgba(255,140,66,0.18);
+    --idle-color: #4a90e2;
+    --idle-glow: rgba(74,144,226,0.18);
+    --accent: #4fffb0;
+    --radius: 18px;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --current-color: var(--idle-color);
+    --current-glow: var(--idle-glow);
+  }
+
+  /* ─── RESET ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px 32px;
+    overflow-x: hidden;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0 12px;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    letter-spacing: 3px;
+    color: var(--current-color);
+    transition: color 0.5s;
+  }
+  .header-actions { display: flex; gap: 10px; }
+  .icon-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: grid; place-items: center;
+    transition: all .2s;
+  }
+  .icon-btn:hover, .icon-btn.active { color: var(--text); border-color: var(--current-color); }
+  .icon-btn.active { background: var(--current-glow); }
+
+  /* ─── MAIN CARD ─── */
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px 24px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.5s, box-shadow 0.5s;
+  }
+  .card.active-card {
+    border-color: var(--current-color);
+    box-shadow: 0 0 32px var(--current-glow), inset 0 0 60px var(--current-glow);
+  }
+
+  /* ─── STATE LABEL ─── */
+  .state-label {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    letter-spacing: 4px;
+    color: var(--current-color);
+    transition: color 0.5s;
+    margin-bottom: 8px;
+    min-height: 1.2em;
+  }
+
+  /* ─── CIRCULAR PROGRESS ─── */
+  .timer-ring-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    margin: 12px 0 20px;
+  }
+  .timer-svg {
+    width: 220px; height: 220px;
+    transform: rotate(-90deg);
+    filter: drop-shadow(0 0 10px var(--current-glow));
+    transition: filter 0.5s;
+  }
+  .ring-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 8;
+  }
+  .ring-progress {
+    fill: none;
+    stroke: var(--current-color);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 628.3;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.25s linear, stroke 0.5s;
+  }
+  .timer-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .timer-display {
+    font-family: var(--font-display);
+    font-size: 5rem;
+    letter-spacing: 4px;
+    color: var(--current-color);
+    transition: color 0.5s;
+    line-height: 1;
+  }
+  .timer-sub {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  /* ─── REP COUNTER ─── */
+  .rep-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+  .rep-dots { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rep-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 1px solid var(--muted);
+    transition: all .3s;
+  }
+  .rep-dot.done { background: var(--stretch-color); border-color: var(--stretch-color); }
+  .rep-dot.current { background: var(--current-color); border-color: var(--current-color); box-shadow: 0 0 6px var(--current-glow); }
+
+  /* ─── CONTROLS ─── */
+  .controls { display: flex; gap: 12px; width: 100%; }
+  .btn {
+    flex: 1;
+    padding: 14px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all .2s;
+    background: transparent;
+    color: var(--muted);
+  }
+  .btn:hover { color: var(--text); border-color: var(--muted); }
+  .btn-primary {
+    flex: 2;
+    background: var(--current-color);
+    color: var(--bg);
+    border-color: var(--current-color);
+    font-size: 1.1rem;
+    transition: background 0.5s, border-color 0.5s, transform .1s, box-shadow 0.5s;
+    box-shadow: 0 4px 20px var(--current-glow);
+  }
+  .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.1); }
+  .btn-primary:active { transform: translateY(0); }
+
+  /* ─── CONFIG CARD ─── */
+  .config-card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .config-title {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .config-field { display: flex; flex-direction: column; gap: 6px; }
+  .config-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .config-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+    padding: 10px 12px;
+    width: 100%;
+    text-align: center;
+    transition: border-color .2s;
+    -moz-appearance: textfield;
+  }
+  .config-input::-webkit-outer-spin-button,
+  .config-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .config-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(79,255,176,0.15);
+  }
+  .config-hint {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  /* ─── MINI STRIP ─── */
+  .mini-strip {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    gap: 10px;
+  }
+  .mini-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .mini-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .mini-val {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    letter-spacing: 2px;
+  }
+  .mini-val.stretch { color: var(--stretch-color); }
+  .mini-val.rest { color: var(--rest-color); }
+  .mini-val.reps { color: var(--idle-color); }
+
+  /* ─── FLASH OVERLAY ─── */
+  .flash {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.08s;
+    z-index: 100;
+  }
+  .flash.show { opacity: 0.12; }
+
+  /* ─── PULSE ANIMATION ─── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .pulsing .timer-display { animation: pulse 1s ease-in-out infinite; }
+
+  /* ─── COMPLETE BADGE ─── */
+  .complete-msg {
+    display: none;
+    text-align: center;
+    padding: 16px;
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    letter-spacing: 3px;
+    color: var(--stretch-color);
+  }
+  .complete-msg.show { display: block; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 360px) {
+    .timer-display { font-size: 4rem; }
+    .timer-svg { width: 180px; height: 180px; }
+    .config-grid { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Flash overlay para cambio de estado -->
+<div class="flash" id="flash"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">STRETCH<span style="opacity:.4">FLOW</span></div>
+  <div class="header-actions">
+    <button class="icon-btn active" id="soundBtn" title="Activar/Desactivar sonido">🔊</button>
+  </div>
+</header>
+
+<!-- TIMER CARD -->
+<div class="card" id="mainCard">
+  <div class="state-label" id="stateLabel">LISTO</div>
+
+  <div class="timer-ring-wrap">
+    <svg class="timer-svg" viewBox="0 0 220 220" id="timerSvg">
+      <circle class="ring-bg" cx="110" cy="110" r="100"/>
+      <circle class="ring-progress" cx="110" cy="110" r="100" id="ringProgress"/>
+    </svg>
+    <div class="timer-center">
+      <div class="timer-display" id="timerDisplay">00</div>
+      <div class="timer-sub" id="timerSub">SEG</div>
+    </div>
+  </div>
+
+  <div class="rep-info">
+    <span id="repText">REP — / —</span>
+    <div class="rep-dots" id="repDots"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="resetBtn" onclick="resetTimer()">↺ RESET</button>
+    <button class="btn btn-primary" id="mainBtn" onclick="toggleTimer()">INICIAR</button>
+    <button class="btn" id="skipBtn" onclick="skipPhase()">SKIP ›</button>
+  </div>
+
+  <div class="complete-msg" id="completeMsg">🎉 ¡COMPLETADO!</div>
+</div>
+
+<!-- CONFIG CARD -->
+<div class="config-card">
+  <div class="config-title">⚙ CONFIGURACIÓN</div>
+  <div class="config-grid">
+    <div class="config-field">
+      <label class="config-label" for="stretchInput">Estiramiento</label>
+      <input class="config-input" type="number" id="stretchInput" min="1" max="300" value="30">
+      <div class="config-hint">segundos</div>
+    </div>
+    <div class="config-field">
+      <label class="config-label" for="restInput">Descanso</label>
+      <input class="config-input" type="number" id="restInput" min="1" max="120" value="10">
+      <div class="config-hint">segundos</div>
+    </div>
+    <div class="config-field">
+      <label class="config-label" for="repsInput">Reps</label>
+      <input class="config-input" type="number" id="repsInput" min="1" max="50" value="5">
+      <div class="config-hint">total</div>
+    </div>
+  </div>
+</div>
+
+<!-- MINI STRIP -->
+<div class="mini-strip">
+  <div class="mini-card">
+    <div class="mini-label">Estiramiento</div>
+    <div class="mini-val stretch" id="miniStretch">30s</div>
+  </div>
+  <div class="mini-card">
+    <div class="mini-label">Descanso</div>
+    <div class="mini-val rest" id="miniRest">10s</div>
+  </div>
+  <div class="mini-card">
+    <div class="mini-label">Total</div>
+    <div class="mini-val reps" id="miniTotal">3:20</div>
+  </div>
+</div>
+
+<script>
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let state = {
+  phase: 'idle',      // 'idle' | 'stretch' | 'rest' | 'done'
+  running: false,
+  paused: false,
+  currentRep: 0,
+  totalReps: 5,
+  stretchSec: 30,
+  restSec: 10,
+  timeLeft: 30,
+  totalForPhase: 30,
+  soundOn: true,
+  interval: null,
+};
+
+const CIRCUMFERENCE = 2 * Math.PI * 100; // 628.3
+
+// ─── AUDIO ────────────────────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function beep(freq, duration, type = 'sine', vol = 0.3) {
+  if (!state.soundOn) return;
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+function playStretchSound() {
+  beep(660, 0.15);
+  setTimeout(() => beep(880, 0.2), 160);
+}
+
+function playRestSound() {
+  beep(440, 0.15);
+  setTimeout(() => beep(330, 0.2), 160);
+}
+
+function playDoneSound() {
+  [0, 180, 360, 540].forEach((d, i) =>
+    setTimeout(() => beep(523 + i * 80, 0.3), d)
+  );
+}
+
+function playCountdownBeep() {
+  beep(880, 0.1, 'square', 0.15);
+}
+
+// Tick durante el descanso — igual al countdown pero más suave
+function playRestTick() {
+  beep(880, 0.1, 'square', 0.15);
+}
+
+// ─── VIBRACIÓN ────────────────────────────────────────────────────────────────
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+// ─── FLASH ────────────────────────────────────────────────────────────────────
+function flashScreen(color) {
+  const el = document.getElementById('flash');
+  el.style.background = color;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 160);
+}
+
+// ─── CSS VARIABLES ────────────────────────────────────────────────────────────
+function applyPhaseTheme(phase) {
+  const root = document.documentElement;
+  const card = document.getElementById('mainCard');
+  const logo = document.querySelector('.logo');
+  const label = document.getElementById('stateLabel');
+  const display = document.getElementById('timerDisplay');
+  const ring = document.getElementById('ringProgress');
+  const mainBtn = document.getElementById('mainBtn');
+
+  if (phase === 'stretch') {
+    root.style.setProperty('--current-color', 'var(--stretch-color)');
+    root.style.setProperty('--current-glow', 'var(--stretch-glow)');
+    label.textContent = '🟢 ESTIRANDO';
+  } else if (phase === 'rest') {
+    root.style.setProperty('--current-color', 'var(--rest-color)');
+    root.style.setProperty('--current-glow', 'var(--rest-glow)');
+    label.textContent = '🟠 DESCANSO / CAMBIO';
+  } else if (phase === 'done') {
+    root.style.setProperty('--current-color', 'var(--stretch-color)');
+    root.style.setProperty('--current-glow', 'var(--stretch-glow)');
+    label.textContent = 'COMPLETADO';
+  } else {
+    root.style.setProperty('--current-color', 'var(--idle-color)');
+    root.style.setProperty('--current-glow', 'var(--idle-glow)');
+    label.textContent = 'LISTO';
+  }
+
+  card.classList.toggle('active-card', phase !== 'idle');
+}
+
+// ─── RING PROGRESS ────────────────────────────────────────────────────────────
+function updateRing(timeLeft, total) {
+  const ring = document.getElementById('ringProgress');
+  const ratio = total > 0 ? timeLeft / total : 0;
+  ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - ratio);
+}
+
+// ─── DISPLAY ──────────────────────────────────────────────────────────────────
+function updateDisplay() {
+  const el = document.getElementById('timerDisplay');
+  const sub = document.getElementById('timerSub');
+  el.textContent = String(state.timeLeft).padStart(2, '0');
+
+  if (state.phase === 'stretch') sub.textContent = 'ESTIRA';
+  else if (state.phase === 'rest') sub.textContent = 'CAMBIA';
+  else sub.textContent = 'SEG';
+
+  updateRing(state.timeLeft, state.totalForPhase);
+
+  // Pulso cuando quedan ≤3 seg
+  const card = document.getElementById('mainCard');
+  card.classList.toggle('pulsing', state.timeLeft <= 3 && state.running);
+
+  // Rep counter
+  const repText = document.getElementById('repText');
+  if (state.running || state.paused) {
+    repText.textContent = `REP ${state.currentRep} / ${state.totalReps}`;
+  } else {
+    repText.textContent = `REP — / —`;
+  }
+
+  updateDots();
+}
+
+function updateDots() {
+  const container = document.getElementById('repDots');
+  const n = Math.min(state.totalReps, 20);
+  container.innerHTML = '';
+  for (let i = 1; i <= n; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'rep-dot';
+    if (i < state.currentRep) dot.classList.add('done');
+    else if (i === state.currentRep && state.running) dot.classList.add('current');
+    container.appendChild(dot);
+  }
+}
+
+// ─── FASES ────────────────────────────────────────────────────────────────────
+function startStretch() {
+  state.phase = 'stretch';
+  state.timeLeft = state.stretchSec;
+  state.totalForPhase = state.stretchSec;
+  applyPhaseTheme('stretch');
+  flashScreen('rgba(79,255,176,1)');
+  playStretchSound();
+  vibrate([100, 50, 100]);
+}
+
+function startRest() {
+  state.phase = 'rest';
+  state.timeLeft = state.restSec;
+  state.totalForPhase = state.restSec;
+  applyPhaseTheme('rest');
+  flashScreen('rgba(255,140,66,1)');
+  playRestSound();
+  vibrate([200]);
+}
+
+function finishAll() {
+  state.phase = 'done';
+  state.running = false;
+  clearInterval(state.interval);
+  state.interval = null;
+  applyPhaseTheme('done');
+  updateRing(1, 1);
+  document.getElementById('timerDisplay').textContent = '✓';
+  document.getElementById('timerSub').textContent = '';
+  document.getElementById('mainBtn').textContent = 'REINICIAR';
+  document.getElementById('mainCard').classList.remove('pulsing');
+  document.getElementById('completeMsg').classList.add('show');
+  playDoneSound();
+  vibrate([100, 50, 100, 50, 300]);
+  document.getElementById('repText').textContent = `REP ${state.totalReps} / ${state.totalReps}`;
+  updateDots();
+}
+
+// ─── TICK ─────────────────────────────────────────────────────────────────────
+function tick() {
+  if (!state.running) return;
+
+  if (state.phase === 'stretch' && state.timeLeft <= 5 && state.timeLeft > 0) {
+    playCountdownBeep();
+  } else if (state.phase === 'rest' && state.timeLeft > 0) {
+    playRestTick();
+  }
+
+  if (state.timeLeft <= 0) {
+    // Transición de fase
+    if (state.phase === 'stretch') {
+      if (state.currentRep >= state.totalReps) {
+        finishAll();
+        return;
+      }
+      startRest();
+    } else if (state.phase === 'rest') {
+      state.currentRep++;
+      if (state.currentRep > state.totalReps) {
+        finishAll();
+        return;
+      }
+      startStretch();
+    }
+  } else {
+    state.timeLeft--;
+  }
+
+  updateDisplay();
+}
+
+// ─── CONTROLES ────────────────────────────────────────────────────────────────
+function toggleTimer() {
+  const btn = document.getElementById('mainBtn');
+
+  // Si está done, reiniciar
+  if (state.phase === 'done') {
+    resetTimer();
+    return;
+  }
+
+  if (!state.running && !state.paused) {
+    // Primer inicio
+    readConfig();
+    state.currentRep = 1;
+    startStretch();
+    state.running = true;
+    state.paused = false;
+    state.interval = setInterval(tick, 1000);
+    btn.textContent = 'PAUSAR';
+    document.getElementById('completeMsg').classList.remove('show');
+  } else if (state.running) {
+    // Pausar
+    state.running = false;
+    state.paused = true;
+    clearInterval(state.interval);
+    state.interval = null;
+    btn.textContent = 'REANUDAR';
+    document.getElementById('mainCard').classList.remove('pulsing');
+    document.getElementById('stateLabel').textContent += ' ⏸';
+  } else if (state.paused) {
+    // Reanudar
+    state.running = true;
+    state.paused = false;
+    state.interval = setInterval(tick, 1000);
+    btn.textContent = 'PAUSAR';
+    applyPhaseTheme(state.phase);
+  }
+
+  updateDisplay();
+}
+
+function resetTimer() {
+  clearInterval(state.interval);
+  state.interval = null;
+  state.running = false;
+  state.paused = false;
+  state.phase = 'idle';
+  state.currentRep = 0;
+  readConfig();
+  state.timeLeft = state.stretchSec;
+  state.totalForPhase = state.stretchSec;
+  applyPhaseTheme('idle');
+  document.getElementById('mainBtn').textContent = 'INICIAR';
+  document.getElementById('mainCard').classList.remove('pulsing');
+  document.getElementById('completeMsg').classList.remove('show');
+  document.getElementById('repText').textContent = `REP — / —`;
+  updateDisplay();
+}
+
+function skipPhase() {
+  if (!state.running && !state.paused) return;
+  if (state.phase === 'stretch') {
+    if (state.currentRep >= state.totalReps) {
+      finishAll();
+    } else {
+      startRest();
+    }
+  } else if (state.phase === 'rest') {
+    state.currentRep++;
+    if (state.currentRep > state.totalReps) {
+      finishAll();
+    } else {
+      startStretch();
+    }
+  }
+  updateDisplay();
+}
+
+// ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
+function readConfig() {
+  state.stretchSec  = parseInt(document.getElementById('stretchInput').value) || 30;
+  state.restSec     = parseInt(document.getElementById('restInput').value)    || 10;
+  state.totalReps   = parseInt(document.getElementById('repsInput').value)    || 5;
+  state.timeLeft    = state.stretchSec;
+  state.totalForPhase = state.stretchSec;
+  updateMiniStrip();
+  saveConfig();
+}
+
+function updateMiniStrip() {
+  const s = parseInt(document.getElementById('stretchInput').value) || 30;
+  const r = parseInt(document.getElementById('restInput').value)    || 10;
+  const n = parseInt(document.getElementById('repsInput').value)    || 5;
+  document.getElementById('miniStretch').textContent = s + 's';
+  document.getElementById('miniRest').textContent    = r + 's';
+  const totalSec = (s + r) * n;
+  const m = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  document.getElementById('miniTotal').textContent = `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+// ─── SONIDO ───────────────────────────────────────────────────────────────────
+document.getElementById('soundBtn').addEventListener('click', () => {
+  state.soundOn = !state.soundOn;
+  const btn = document.getElementById('soundBtn');
+  btn.textContent = state.soundOn ? '🔊' : '🔇';
+  btn.classList.toggle('active', state.soundOn);
+  localStorage.setItem('sf_sound', state.soundOn ? '1' : '0');
+});
+
+// ─── LOCAL STORAGE ────────────────────────────────────────────────────────────
+function saveConfig() {
+  localStorage.setItem('sf_stretch', document.getElementById('stretchInput').value);
+  localStorage.setItem('sf_rest',    document.getElementById('restInput').value);
+  localStorage.setItem('sf_reps',    document.getElementById('repsInput').value);
+}
+
+function loadConfig() {
+  const s = localStorage.getItem('sf_stretch');
+  const r = localStorage.getItem('sf_rest');
+  const n = localStorage.getItem('sf_reps');
+  const snd = localStorage.getItem('sf_sound');
+  if (s) document.getElementById('stretchInput').value = s;
+  if (r) document.getElementById('restInput').value    = r;
+  if (n) document.getElementById('repsInput').value    = n;
+  if (snd === '0') {
+    state.soundOn = false;
+    document.getElementById('soundBtn').textContent = '🔇';
+    document.getElementById('soundBtn').classList.remove('active');
+  }
+  readConfig();
+}
+
+// ─── INPUTS → MINI STRIP ──────────────────────────────────────────────────────
+['stretchInput','restInput','repsInput'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    if (!state.running && !state.paused) {
+      readConfig();
+      updateDisplay();
+    } else {
+      updateMiniStrip();
+      saveConfig();
+    }
+  });
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadConfig();
+updateDisplay();
+</script>
+</body>
+</html>
