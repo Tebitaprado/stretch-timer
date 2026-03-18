@@ -1,14 +1,20 @@
 {
   "name": "StretchFlow",
   "short_name": "Stretch",
+  "description": "Temporizador para rutinas de estiramiento",
   "start_url": "/stretch-timer/",
   "display": "standalone",
   "background_color": "#0d0f14",
   "theme_color": "#4fffb0",
   "icons": [
     {
-      "src": "https://via.placeholder.com/192x192/4fffb0/0d0f14?text=S",
+      "src": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Green%20circle/3D/green_circle_3d.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Green%20circle/3D/green_circle_3d.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
